@@ -6,7 +6,6 @@ returned. **Source** says where that came from:
 - **Eval:** the labeled evaluation (`eval/results/`, full pipeline). P@10 = share of the top 10 results that are
   relevant; violations = results that must never appear, counted at any rank.
 - **Run:** a query run against the app during development and the final fixes on 2026-10-08.
-- **To check:** not yet confirmed; run on the live app before relying on it.
 
 Live app: https://semantic-car-search-cfwe.onrender.com
 
@@ -32,7 +31,7 @@ Counts are results, i.e. make + model + year groups.
 | 1.7 | `cheap fuel efficient car` | Economical cars | 137, P@10 1.00, 0 violations | Eval | Yes |
 | 1.8 | `exotic` | Exotic / high-end cars | 161, P@10 1.00, 0 violations | Eval | Yes |
 | 1.9 | `off road 4x4` | Off-road capable vehicles | 424, P@10 1.00, 0 violations | Eval | Yes |
-| 1.10 | `heavy duty truck` | Only pickups, heavy-duty ones near the top | | To check | |
+| 1.10 | `heavy duty truck` | Only pickups, heavy-duty ones near the top | 126, all pickups; heavy-duty models only partly at the top (top 4: Ram 1500, Toyota T100, Dodge RAM 250, Lincoln Mark LT) | Run | Partial, see 7.13 |
 
 ## 2. The failure case: "trucks" must never show non-trucks
 
@@ -95,10 +94,10 @@ Counts are results, i.e. make + model + year groups.
 | 6.3 | `zzzz`, `xkcd` | Nothing, ideally | 22 and 33 | Run | Known limitation |
 | 6.4 | `red car` | Red cars | 221, ranked by meaning only (no colour data) | Run | Known limitation |
 | 6.5 | `mini cooper` | MINI Coopers | 177 unrelated cars (no MINI in the data) | Run | Known limitation |
-| 6.6 | A search filters rule out, e.g. `electric pickup under 10k` | Empty, with a message naming the filter | | To check | |
-| 6.7 | Very long query, special characters (`"%'`) | No error | | To check | |
-| 6.8 | Paging on `trucks` | 20 per page, last page works | | To check | |
-| 6.9 | First search after the app has been idle | Slow (up to about a minute), then normal | | To check | |
+| 6.6 | A search filters rule out, e.g. `electric pickup under 10k` | Empty, with a message naming the filter | 0 results, with a message naming the price, fuel and body filters | Run | Yes |
+| 6.7 | Very long query, special characters (`"%'`) | No error | Special characters: no error. 600 characters: `400 "q must be 1 to 200 characters"` | Run | Yes |
+| 6.8 | Paging on `trucks` | 20 per page, last page works | 20 per page; page 6 has the last 6 of 126; page 7 is empty | Run | Yes |
+| 6.9 | First search after the app has been idle | A few seconds slower while Neon wakes; a Render cold start if a keep-alive run was delayed or skipped | Not measured | — | — |
 
 ## 7. Failed and mishandled scenarios
 
@@ -123,8 +122,9 @@ The same items, grouped by scenario: [LIMITATIONS.md](LIMITATIONS.md).
 | 7.14 | `500` | Also matches "Sierra 1500" and other 1500 models | A typed word may follow a digit, so that "hd" finds "1500HD" | Known limitation |
 | 7.15 | Any query | Cutoff, inference margin and diversity penalties may not generalise | They were tuned on the same 20 queries they are measured on | Known limitation |
 | 7.16 | Empty search box | The latest list does not change after re-ingesting | It is read from the database once per app start | Known limitation |
-| 7.17 | First search after an idle period | Up to about a minute; normal searches take 1–2 s | Render's free service sleeps and Neon suspends when idle; embedding the query is slow at 0.1 CPU | Known limitation |
+| 7.17 | First search after an idle period | A few seconds slower; a Render cold start is still possible; normal searches take 1–2 s | The keep-alive pings Render every 10 minutes so it normally doesn't sleep, but GitHub's scheduled runs can be delayed or skipped. Neon suspends when idle, since the ping doesn't touch the database. Embedding the query is slow at 0.1 CPU | Known limitation |
 | 7.18 | Empty search box, `newest` | The latest cars are 2017 models, and prices are their original MSRP | The dataset covers model years 1990–2017 | Known limitation |
+| 7.19 | `"%'` | Lists every car, newest first, as if the query were filters only | Punctuation is stripped, leaving no words to rank by | Known limitation |
 
 ## Why the limitations are accepted
 

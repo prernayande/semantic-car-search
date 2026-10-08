@@ -160,25 +160,9 @@ The penalty is part of the final score, so results stay sorted by score.
 
 ## 6. Assumptions
 
-1. **Dataset:** the public Kaggle "Car Features and MSRP" file (11,914 rows, 16 columns), because it is messy enough to show real cleaning (715 duplicates, missing values, placeholder prices).
-2. **One word is enough:** there is no minimum query length, because "trucks" is the headline example.
-3. **An explicit body type or fuel word is a hard filter:** showing a sedan for "truck" is a failure at any rank.
-4. **A named make is a hard filter:** "ford trucks" must never show another make.
-5. **Price is unknown for model years 2000 and earlier:** the MSRP median for those years is $2,000–$2,855 versus $22,768–$36,720 afterwards, so it is not a new-car price.
-6. **"cheap" means preferring MSRP of at most $25,000:** a rough cut near the low end of post-2000 prices; it boosts, it never filters.
-7. **"fuel efficient" means preferring at least 30 highway mpg:** a common rule of thumb; it boosts, it never filters.
-8. **"under 30k" means at most $30,000, and "around 30k" means ±15%:** a simple, predictable reading.
-9. **A bare number is a price only if it is at least 5,000:** so "400 hp" or "2015" are not read as prices.
-10. **Negation applies to the next word only:** "suv not electric" excludes electric, nothing else.
-11. **"off road" means SUV or pickup:** that is what people mean, and it avoids trusting drivetrain labels alone.
-12. **One card per make, model and year:** listing every trim would bury different models.
-13. **Weak matches are dropped instead of padded:** fewer relevant results beat filler.
-14. **A small embedding model run in-process:** no key or cost and it fits a small server, at the price of less nuance.
-15. **Price, horsepower and MPG are not embedded:** small models treat "$25,000" and "$95,000" almost the same, so numeric intent is handled by filters.
-16. **Suggestions are prefix matches only:** makes, models and lexicon words that start with what was typed, at most 8; no typo correction, which keeps them instant and predictable.
-17. **An empty search shows the latest cars:** newest model-year first, then the dataset's popularity score, so the page is never blank. Popularity is one number per make in this dataset, so within a year the most popular make comes first.
-18. **A query that is only filters lists every match, newest first:** "under 30k" has no words to rank by, so all 875 matching model-years are equally relevant.
-19. **The link must open without setup:** so the app is hosted (Render + Neon, free plans) with a keep-alive ping, and the home page's latest list is cached in memory so a visit does not wake the database.
+24 written assumptions, from the dataset choice to the fetch cap sized for Render's free tier, whole-word name
+matching and leaving vague words such as "heavy duty" to meaning. All of them, numbered and grouped by the same
+scenarios as the limitations: [ASSUMPTIONS.md](doc/ASSUMPTIONS.md).
 
 ## 7. SOLID mapping
 
@@ -235,14 +219,14 @@ constraint credit and survive the cutoff. Not fixed, to keep the held-out set ho
 | "something to haul lumber" (not labeled) | infers pickup; top 10 all pickups | top 10: 7 pickups, 2 vans, 1 minivan |
 
 Full per-query tables: [eval/results/](eval/results/). Requirement-by-requirement test scenarios, including every
-known failure: [TEST_SCENARIOS.md](TEST_SCENARIOS.md).
+known failure: [TEST_SCENARIOS.md](doc/TEST_SCENARIOS.md).
 
 ## 9. Known limitations
 
 The biggest ones: the dataset has no colour, seat or review data and ends at 2017 models, so some queries return the
 nearest cars by meaning rather than an exact answer; nonsense queries such as "zzzz" can still return cars; and the
-first search after an idle period can take up to about a minute on the free hosting. All of them, grouped by
-scenario: [LIMITATIONS.md](LIMITATIONS.md).
+first search after a quiet period can be a few seconds slower while the database wakes. All of them, grouped by
+scenario: [LIMITATIONS.md](doc/LIMITATIONS.md).
 
 ## 10. Scaling to production
 

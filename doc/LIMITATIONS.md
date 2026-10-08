@@ -6,12 +6,13 @@ Grouped by scenario. Each item's number matches section 7 of [TEST_SCENARIOS.md]
 
 - **7.7 `over 400 hp`, `2015 or newer`:** horsepower, MPG and model-year phrases are not parsed, so the number is not
   applied as a filter and the query falls back to meaning.
-- **7.8 `under 30`:** not treated as a price. A bare number below 5,000 is ignored as a price (README assumption 9),
+- **7.8 `under 30`:** not treated as a price. A bare number below 5,000 is ignored as a price ([assumption 9](ASSUMPTIONS.md)),
   so it becomes search text.
 - **7.12 Vague queries:** less nuance than a large hosted model. The embedding model is small and runs in-process,
   which is why category inference uses a conservative threshold.
 - **7.13 `heavy duty truck`:** synonyms are hand written, so phrases not in the word list, such as "heavy duty", are
   left to meaning. This is on purpose: only explicit body words such as "truck" become filters.
+- **7.19 `"%'`:** a query of only special characters lists every car, newest first, as if it were filters only.
 
 ## Ranking and gates
 
@@ -48,8 +49,10 @@ Grouped by scenario. Each item's number matches section 7 of [TEST_SCENARIOS.md]
 
 ## Performance and hosting
 
-- **7.17 First search after an idle period:** up to about a minute, because Render's free service sleeps and Neon
-  suspends when idle. Normal searches take 1–2 s at Render's 0.1 CPU, mostly to embed the query.
+- **7.17 First search after an idle period:** a few seconds slower. The keep-alive pings Render every 10 minutes so it
+  normally doesn't sleep, but GitHub's scheduled runs can be delayed or skipped, so a cold start is still possible.
+  Neon also suspends when idle, since the ping doesn't touch the database. Normal searches take 1–2 s at Render's
+  0.1 CPU, mostly to embed the query.
 - **7.16 The latest list is cached:** it is read from the database once per app start, so restart the app after
   re-ingesting.
 
