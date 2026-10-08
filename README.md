@@ -48,7 +48,7 @@ docker run --rm -p 8080:8080 -m 512m --env-file .env semantic-car-search
 
 ### Deploy (Render + Neon, both free)
 
-1. **Neon:** create a project in AWS US West 2 (Oregon), next to Render's Oregon region. Under **Connect**, turn
+1. **Neon:** create a project in AWS US East 2 (Ohio), next to the Render service's Ohio region. Under **Connect**, turn
    connection pooling off and copy the connection string; `.env.example` shows how to turn it into the three
    `DATABASE_*` values. Flyway creates the schema, including the `vector` extension, on the first run.
 2. **Load the data into Neon once**, from your machine (environment variables override `.env`):
