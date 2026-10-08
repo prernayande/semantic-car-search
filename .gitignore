@@ -15,3 +15,6 @@ backend/src/main/resources/static/
 .DS_Store
 Thumbs.db
 CLAUDE_CODE_CHANGE_SPEC.md
+
+# kept locally, not part of the repo
+AI_USAGE.md

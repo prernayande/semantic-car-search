@@ -243,7 +243,3 @@ Full per-query tables: [eval/results/](eval/results/).
 - **Observability:** metrics and tracing for latency per stage, plus alerts on zero-result and low-score queries.
 - **Quality loop:** run the evaluation (including the held-out set) in CI, and use click data to tune weights, eventually with a learned ranking model.
 - **Safety:** rate limiting, input limits (query length and page size are already capped) and monitoring of the free-text field.
-
-## 11. AI usage
-
-See [AI_USAGE.md](AI_USAGE.md).
