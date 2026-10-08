@@ -48,9 +48,15 @@ public class CarRepository {
         return select(query, lexicalQuery, filters, true, "lex DESC", limit);
     }
 
-    // a leftover word that appears inside the make or model name, e.g. "hd" in "Sierra 1500HD".
-    // Full-text search alone misses these because "1500hd" is indexed as one word.
-    static final String NAME_CONTAINS = "lower(c.make || ' ' || c.model) LIKE ?";
+    // a leftover word that is a whole word of the make or model name, e.g. "m3" in "BMW M3" or "f-150" in "Ford F-150",
+    // or that follows a number, e.g. "hd" in "Sierra 1500HD". It must start at a word boundary (\m) or right after a
+    // digit, and end at a word boundary (\M), so "red" does not match "Five Hundred".
+    static final String NAME_HAS_WORD = "lower(c.make || ' ' || c.model) ~ ?";
+
+    // regex for one word (see NAME_HAS_WORD); anything that is not a letter or digit is escaped
+    static String wholeWord(String word) {
+        return "(\\m|(?<=[0-9]))" + word.replaceAll("[^\\p{L}\\p{N}]", "\\\\$0") + "\\M";
+    }
 
     // every distinct {make, model}, for search suggestions
     public List<String[]> makesAndModels() {
@@ -85,22 +91,22 @@ public class CarRepository {
         List<Object> params = new ArrayList<>();
         params.add(vector);
         String lex = "0";
-        List<String> likes = new ArrayList<>();   // "%hd%" for each leftover word
+        List<String> words = new ArrayList<>();   // whole-word pattern for each leftover word
         if (lexicalQuery != null) {
-            for (String w : lexicalQuery.split(" or ")) likes.add("%" + w + "%");
-            // full-text rank + 0.1 for each word found inside the make/model name
+            for (String w : lexicalQuery.split(" or ")) words.add(wholeWord(w));
+            // full-text rank + 0.1 for each word found in the make/model name
             lex = "ts_rank_cd(c.search_tsv, websearch_to_tsquery('english', ?), 32) + 0.1 * ("
-                    + String.join(" + ", Collections.nCopies(likes.size(), "(" + NAME_CONTAINS + ")::int")) + ")";
+                    + String.join(" + ", Collections.nCopies(words.size(), "(" + NAME_HAS_WORD + ")::int")) + ")";
             params.add(lexicalQuery);
-            params.addAll(likes);
+            params.addAll(words);
         }
         String sql = "SELECT " + COLUMNS + ", 1 - (c.embedding <=> CAST(? AS vector)) AS sem, " + lex + " AS lex"
                 + " FROM car c WHERE " + where(filters, params);
         if (onlyTextHits) {
             sql += " AND (c.search_tsv @@ websearch_to_tsquery('english', ?) OR "
-                    + String.join(" OR ", Collections.nCopies(likes.size(), NAME_CONTAINS)) + ")";
+                    + String.join(" OR ", Collections.nCopies(words.size(), NAME_HAS_WORD)) + ")";
             params.add(lexicalQuery);
-            params.addAll(likes);
+            params.addAll(words);
         }
         if (orderBy.contains("?")) params.add(vector);
         sql += " ORDER BY " + orderBy + " LIMIT ?";

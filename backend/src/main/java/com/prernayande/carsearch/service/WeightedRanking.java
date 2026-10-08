@@ -89,13 +89,13 @@ public class WeightedRanking implements RankingStrategy {
     List<ScoredCar> cutoff(List<ScoredCar> scored, ParsedQuery query) {
         double top = scored.stream().mapToDouble(ScoredCar::finalScore).max().orElse(0);
         long explicitFields = query.soft().stream().filter(s -> !s.inferred()).map(SoftConstraint::field).distinct().count();
-        // A pure name search ("HD", "Civic", "range rover": no preferences) where some cars literally contain the
+        // A pure name search ("Civic", "M3", "range rover": no preferences) where some cars literally contain the
         // typed words: show only those cars. If nothing matches literally, fall back to meaning (embeddings).
         if (!query.hasSoft() && scored.stream().anyMatch(s -> s.lexical() > 0)) {
             scored = scored.stream().filter(s -> s.lexical() > 0).toList();
         }
         // the similarity floor is waived for rows that literally contain the typed words (s.lexical() > 0):
-        // a short word like "HD" has too little meaning for the embedding but is still a clear request
+        // a short word like "M3" has too little meaning for the embedding but is still a clear request
         return scored.stream()
                 .filter(s -> s.rawSemantic() >= MIN_SIMILARITY || s.lexical() > 0
                         || (explicitFields > 0 && s.matched().size() >= explicitFields))

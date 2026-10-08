@@ -93,9 +93,10 @@ soft preferences (body type, fuel, drivetrain, transmission, size, category such
 "cheap"/"fuel efficient"); "not/no/non/without/except" before a word turns it into an exclusion. What is left
 (usually a model name like "Civic") is the residual text for full-text search.
 
-**Gate.** An explicit body type or fuel word ("truck", "electric") becomes a SQL filter, so contradicting rows are
-never retrieved. If the query names no body type or category, `CategoryInferrer` compares the query embedding with
-short category descriptions and may add a soft, half-weight, never-gated preference (switchable with
+**Filters.** An explicit body type or fuel word ("truck", "electric") becomes a SQL filter, like price, make and
+exclusions, so contradicting rows are never retrieved. Filters are never relaxed. If the query names no body type or
+category, `CategoryInferrer` compares the query embedding with short category descriptions and may add a soft,
+half-weight preference that is never a filter (switchable with
 `carsearch.category-inference` in `application.yml`). A category the user excluded ("not truck") is never guessed;
 the others still can be ("family car not minivan" → SUV).
 
@@ -104,18 +105,29 @@ the others still can be ("family car not minivan" → SUV).
 newest first, without scores, and skips the embedding model. Ranking by the embedding of "under 30k" would be
 meaningless, and the similarity floor would drop nearly every car.
 
-**Retrieve.** Two sources under the same `WHERE`: dense (500 nearest neighbours by cosine distance, HNSW index) and
-lexical (200 best `ts_rank_cd` matches on the residual text). Candidates are merged by car id.
+**Retrieve.** Two sources under the same `WHERE`: dense (nearest neighbours by cosine distance, HNSW index) and
+lexical (up to 200 best `ts_rank_cd` matches on the residual text, plus make/model names containing a residual word
+as a whole word or right after a number). Candidates are merged by car id.
 
 **Blend.** `final = α·semantic + β·lexical + γ·constraints`, each signal scaled to [0, 1] across the candidates.
 α/β/γ = 0.45/0.20/0.35 when the query has preferences, 0.70/0.30/0 when it has none; with no residual text β is
 added to α. The constraints signal adds +weight for each matched preference and −weight for each contradicted one
 (body 3, fuel 2, category 2, drivetrain 1.5, size 1, transmission 1, "cheap"/"fuel efficient" 1.5).
 
-**Cutoff.** Keep a row only if its score is at least 60% of the top score and its cosine similarity is at least 0.25.
-The similarity floor is waived when the row contains the typed words or matches every explicit preference. For a pure
-name search ("Civic", no preferences), if some cars contain the typed words, only those are kept. If nothing
-survives, the response is empty with a message naming the filter that removed everything.
+**The four gates.** After the filters, four gates decide how many cars are returned. They run in this order, a car
+must pass all four, and the number of results is the number of make + model + year groups left at the end. Nothing
+pads a short list; if nothing survives, the response names the filter whose removal would bring back the most cars.
+
+| Gate | What it checks | When it applies | Example |
+| --- | --- | --- | --- |
+| 1. Fetch cap | Only the nearest neighbours are fetched: **500** for open-ended queries, **2,000** when a filter already narrows the set (body type, fuel, make, price or an exclusion) | Every ranked search | "trucks": all 1,597 pickups are fetched, so all 126 pickup model-years are shown |
+| 2. Name match | If any candidate's make or model contains a typed word as a **whole word** (or right after a number, as "hd" in "1500HD"), only those cars are kept | Queries with no preferences that name a car ("Civic", "F-150", "bmw m3") | "Civic": 8 model-years; "red" does not match "Five Hundred" |
+| 3. Similarity floor | Drops cars with cosine similarity below **0.25**; waived for name matches and for cars matching every explicit preference | Every ranked search | Removes nearly everything for nonsense such as "asdfgh" |
+| 4. Relative cutoff | Drops cars scoring below **60%** of the top score | Every ranked search | "family car with lots of space": 409 of 500 candidates removed |
+
+The fetch cap exists because the app runs on Render's free tier (512 MB, 0.1 CPU): measured in a container with those
+limits, raising it from 500 to 2,000 for filtered queries left peak memory unchanged (about 357 MiB) and added roughly
+0.3–0.7 s to the largest filtered queries (searches take about 1–2 s there, mostly to embed the query).
 
 **Group.** One card per make + model + year; the card shows the best trim, the number of trims and the price range.
 
@@ -185,7 +197,7 @@ This is a prototype, so the code favours being easy to read over textbook struct
 Labeled queries live in `eval/queries.json` (20 queries) and `eval/heldout_queries.json` (9 queries). Labels are
 rules over dataset fields (for example "trucks": relevant = body type pickup, never = anything else), so they are
 reproducible. **P@10** = share of the top 10 groups that are relevant. **Violations** = groups that must never
-appear, counted at any rank. R1 = dense retrieval only (no parsing, no lexical search, no gate). R3 = the full
+appear, counted at any rank. R1 = dense retrieval only (no parsing, no lexical search, no filters). R3 = the full
 pipeline as served.
 
 **Main set (20 queries).** This set was also used to choose the thresholds, so it flatters the system.
@@ -225,13 +237,20 @@ Full per-query tables: [eval/results/](eval/results/).
 - **Small embedding model:** limited nuance on vague queries, which is why category inference uses a conservative threshold.
 - **No horsepower, MPG or model-year parsing:** "over 400 hp" or "2015 or newer" fall back to embeddings.
 - **Hand-tuned thresholds:** the cutoff, inference margin and diversity penalties were chosen on the same 20 queries they are measured on (see the comments next to the constants in `WeightedRanking` and `CategoryInferrer`).
-- **Strict gate means short lists:** "electric SUV under 60k" returns only the Toyota RAV4 EV years.
+- **Strict filters mean short lists:** "electric SUV under 60k" returns only the Toyota RAV4 EV years.
 - **"under 30" is not a price:** a bare number below 5,000 is ignored as a price (assumption 9), so it becomes
   search text instead.
 - **Words the data cannot answer still return something:** there is no colour, seat-count or review data, so
   "red car" or "7 seater" return the nearest cars by meaning rather than saying "no match".
 - **The latest list is cached:** it is read from the database once per app start, so restart the app after
   re-ingesting.
+- **Nonsense queries can still return cars:** "asdfgh" returns one Ford Aspire, "zzzz" 22 model-years and "xkcd" 33.
+  Their best similarity (0.26–0.39) overlaps real queries such as "exotic" (0.37) or "sporty" (0.34), so no
+  similarity floor separates them: raising the floor to 0.30 would drop 44 "exotic" and 32 "sporty" results and still
+  not stop "zzzz".
+- **The fetch cap still applies to very large filtered sets:** a filtered query ranks at most the 2,000 nearest cars
+  (for example 2,843 sedans pass "sedan"), and an open-ended query ranks the 500 nearest.
+- **Response time on the free tier:** about 1–2 s per search at Render's 0.1 CPU, mostly for embedding the query.
 
 ## 10. Scaling to production
 

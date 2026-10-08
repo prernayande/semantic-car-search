@@ -23,7 +23,9 @@ public class SearchService {
 
     private static final Logger log = LoggerFactory.getLogger(SearchService.class);
 
-    static final int DENSE_LIMIT = 500;     // nearest neighbours per query; 200 gave only 19 groups for "trucks"
+    static final int DENSE_LIMIT = 500;            // nearest neighbours for open-ended queries; 200 gave only 19 groups for "trucks"
+    static final int FILTERED_DENSE_LIMIT = 2000;  // when filters already narrow the set (e.g. 1,597 pickups), so "trucks"
+                                                   // shows all of them; still capped for Render's 512 MB / 0.1 CPU
     static final int LEXICAL_LIMIT = 200;   // full-text matches per query
 
     // ranked = false when the results are a plain filtered list (newest first) with no relevance scores
@@ -56,7 +58,7 @@ public class SearchService {
         Filters filters = parsed.filters();
         String lexicalQuery = parsed.hasResidual() ? String.join(" or ", parsed.residual().split(" ")) : null;
         Map<Integer, Candidate> candidates = new LinkedHashMap<>();
-        for (Candidate c : cars.findDense(vector, lexicalQuery, filters, DENSE_LIMIT)) candidates.put(c.car().id(), c);
+        for (Candidate c : cars.findDense(vector, lexicalQuery, filters, denseLimit(filters))) candidates.put(c.car().id(), c);
         if (lexicalQuery != null) {
             for (Candidate c : cars.findLexical(vector, lexicalQuery, filters, LEXICAL_LIMIT)) candidates.putIfAbsent(c.car().id(), c);
         }
@@ -85,6 +87,10 @@ public class SearchService {
         long tookMs = System.currentTimeMillis() - start;
         log.info("search query=\"{}\" groups={} tookMs={} (filters only)", parsed.original(), all.size(), tookMs);
         return new SearchResult(parsed, all.size(), page, size, pageOfResults, false, message, tookMs);
+    }
+
+    static int denseLimit(Filters filters) {
+        return filters.isEmpty() ? DENSE_LIMIT : FILTERED_DENSE_LIMIT;
     }
 
     // say why nothing came back: name the filter whose removal brings back the most cars
