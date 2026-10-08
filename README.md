@@ -248,6 +248,8 @@ scenario: [LIMITATIONS.md](doc/LIMITATIONS.md).
 
 ## 10. Scaling to production
 
+Query routing by cost, fallbacks, hybrid search and scaling, each marked built or proposed: [DESIGN_NOTES.md](doc/DESIGN_NOTES.md).
+
 - **Stateless app instances behind a load balancer.** The app holds no session state, so it scales horizontally.
 - **Split embedding into its own service.** The in-process model is the main memory cost; a separate service lets the search API stay small and the model scale on its own.
 - **Cache** query embeddings and popular query results (for example in Redis).
