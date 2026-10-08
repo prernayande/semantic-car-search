@@ -160,6 +160,8 @@ The penalty is part of the final score, so results stay sorted by score.
 
 ## 6. Assumptions
 
+Where the brief was unclear and what I assumed, in short: [ASSUMPTIONS.md](doc/ASSUMPTIONS.md). The detailed list:
+
 1. **Dataset:** the public Kaggle "Car Features and MSRP" file (11,914 rows, 16 columns), because it is messy enough to show real cleaning (715 duplicates, missing values, placeholder prices).
 2. **One word is enough:** there is no minimum query length, because "trucks" is the headline example.
 3. **An explicit body type or fuel word is a hard filter:** showing a sedan for "truck" is a failure at any rank.
