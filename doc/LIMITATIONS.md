@@ -6,7 +6,7 @@ Grouped by scenario. Each item's number matches section 7 of [TEST_SCENARIOS.md]
 
 - **7.7 `over 400 hp`, `2015 or newer`:** horsepower, MPG and model-year phrases are not parsed, so the number is not
   applied as a filter and the query falls back to meaning.
-- **7.8 `under 30`:** not treated as a price. A bare number below 5,000 is ignored as a price ([assumption 9](ASSUMPTIONS.md)),
+- **7.8 `under 30`:** not treated as a price. A bare number below 5,000 is ignored as a price (README assumption 9),
   so it becomes search text.
 - **7.12 Vague queries:** less nuance than a large hosted model. The embedding model is small and runs in-process,
   which is why category inference uses a conservative threshold.
