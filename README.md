@@ -18,6 +18,8 @@ words as you type.
 
 Java 21 · Spring Boot 3.5 · PostgreSQL + pgvector (Neon) · all-MiniLM-L6-v2 run in-process (ONNX) · React + Vite.
 
+AI assistants used, with prompts and outcomes: [AI_USAGE.md](doc/AI_USAGE.md).
+
 ## 2. How to run
 
 Prerequisites: Java 21, Maven 3.9, Node 20+, and Docker (for the local Postgres + pgvector database).
