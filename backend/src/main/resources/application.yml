@@ -1,0 +1,19 @@
+spring:
+  # local runs read the database credentials from .env; on a host they are environment variables
+  config:
+    import: "optional:file:.env[.properties],optional:file:../.env[.properties]"
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USER}
+    password: ${DATABASE_PASSWORD}
+    hikari:
+      maximum-pool-size: 3       # tiny traffic, 512 MB host
+      connection-timeout: 10000  # ms
+
+server:
+  port: ${PORT:8080}             # hosting platforms usually set PORT
+
+# Search tuning numbers are constants in the classes that use them (WeightedRanking, CategoryInferrer,
+# SearchService), each with a comment saying where it came from.
+carsearch:
+  category-inference: true       # false = only words typed in the query count (used for the on/off comparison)

@@ -1,0 +1,17 @@
+# secrets
+.env
+*.env.local
+
+# build output
+backend/target/
+frontend/node_modules/
+frontend/dist/
+backend/src/main/resources/static/
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+CLAUDE_CODE_CHANGE_SPEC.md
