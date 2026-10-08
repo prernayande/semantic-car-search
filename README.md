@@ -13,7 +13,7 @@ per make + model + year, and every ranked card shows its score breakdown. Before
 an empty search) the page lists the latest model-years, and the search box suggests makes, models and search
 words as you type.
 
-Java 21 · Spring Boot 3.5 · PostgreSQL + pgvector · all-MiniLM-L6-v2 run in-process (ONNX) · React + Vite.
+Java 21 · Spring Boot 3.5 · PostgreSQL + pgvector (Neon) · all-MiniLM-L6-v2 run in-process (ONNX) · React + Vite.
 
 ## 2. How to run
 
@@ -45,6 +45,23 @@ As a Docker container, sized for a 512 MB host:
 docker build -t semantic-car-search .
 docker run --rm -p 8080:8080 -m 512m --env-file .env semantic-car-search
 ```
+
+### Deploy (Render + Neon, both free)
+
+1. **Neon:** create a project in AWS US West 2 (Oregon), next to Render's Oregon region. Under **Connect**, turn
+   connection pooling off and copy the connection string; `.env.example` shows how to turn it into the three
+   `DATABASE_*` values. Flyway creates the schema, including the `vector` extension, on the first run.
+2. **Load the data into Neon once**, from your machine (environment variables override `.env`):
+   ```bash
+   cd backend
+   DATABASE_URL='jdbc:postgresql://<host>/<db>?sslmode=require' DATABASE_USER='<user>' DATABASE_PASSWORD='<password>' \
+     mvn spring-boot:run -Dspring-boot.run.profiles=ingest
+   ```
+3. **Render:** New → Blueprint → this GitHub repo. `render.yaml` defines one free Docker web service; enter the
+   three `DATABASE_*` values when asked. The health check is `/api/health`.
+4. **Keep-alive:** in GitHub, Settings → Secrets and variables → Actions → Variables, add `APP_URL` = the Render
+   URL. `.github/workflows/keepalive.yml` then pings `/api/health` every 10 minutes so the free service does not
+   sleep. That endpoint never queries the database, so Neon can still suspend when nobody is searching.
 
 ## 3. Architecture
 
@@ -108,6 +125,10 @@ The penalty is part of the final score, so results stay sorted by score.
 
 ## 5. Design decisions and trade-offs
 
+- **Render + Neon for hosting.** Both have free plans that do not expire, and Neon supports pgvector, keeping
+  vectors, full-text search and SQL filters in one store. The trade-offs: Render's free service sleeps when idle
+  (hence the keep-alive ping), and Neon's compute suspends when idle, so the first search after a quiet period
+  waits a few seconds for it to wake.
 - **Pretrained embedding model run in-process.** No API key, no quota, no cost and no third-party failure; it
   fits a small server. The trade-off is less nuance on vague queries than a large hosted model.
 - **Rules instead of an LLM for query parsing.** Rules are deterministic, testable and explainable for every
@@ -140,6 +161,7 @@ The penalty is part of the final score, so results stay sorted by score.
 16. **Suggestions are prefix matches only:** makes, models and lexicon words that start with what was typed, at most 8; no typo correction, which keeps them instant and predictable.
 17. **An empty search shows the latest cars:** newest model-year first, then the dataset's popularity score, so the page is never blank. Popularity is one number per make in this dataset, so within a year the most popular make comes first.
 18. **A query that is only filters lists every match, newest first:** "under 30k" has no words to rank by, so all 875 matching model-years are equally relevant.
+19. **The link must open without setup:** so the app is hosted (Render + Neon, free plans) with a keep-alive ping, and the home page's latest list is cached in memory so a visit does not wake the database.
 
 ## 7. SOLID mapping
 

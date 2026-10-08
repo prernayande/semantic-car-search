@@ -1,0 +1,17 @@
+# Render Blueprint: one free Docker web service. DB credentials are secrets set in the dashboard.
+services:
+  - type: web
+    name: semantic-car-search
+    runtime: docker
+    plan: free
+    region: oregon            # same region as the Neon database (AWS us-west-2)
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_USER
+        sync: false
+      - key: DATABASE_PASSWORD
+        sync: false
