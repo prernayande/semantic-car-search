@@ -1,5 +1,8 @@
 # Semantic Car Search
 
+**Live app:** https://semantic-car-search-cfwe.onrender.com (the first search after an idle period can take a few
+seconds while the database wakes)
+
 Try: `trucks` · `electric SUV under 60k` · `family car with lots of space` · `suv not electric` · `Civic` ·
 `under 30k` (append `/?q=...` to the URL to link straight to a search)
 
@@ -47,6 +50,8 @@ docker run --rm -p 8080:8080 -m 512m --env-file .env semantic-car-search
 ```
 
 ### Deploy (Render + Neon, both free)
+
+The live app was deployed with these steps.
 
 1. **Neon:** create a project in AWS US East 2 (Ohio), next to the Render service's Ohio region. Under **Connect**, turn
    connection pooling off and copy the connection string; `.env.example` shows how to turn it into the three
@@ -121,9 +126,9 @@ pads a short list; if nothing survives, the response names the filter whose remo
 | Gate | What it checks | When it applies | Example |
 | --- | --- | --- | --- |
 | 1. Fetch cap | Only the nearest neighbours are fetched: **500** for open-ended queries, **2,000** when a filter already narrows the set (body type, fuel, make, price or an exclusion) | Every ranked search | "trucks": all 1,597 pickups are fetched, so all 126 pickup model-years are shown |
-| 2. Name match | If any candidate's make or model contains a typed word as a **whole word** (or right after a number, as "hd" in "1500HD"), only those cars are kept | Queries with no preferences that name a car ("Civic", "F-150", "bmw m3") | "Civic": 8 model-years; "red" does not match "Five Hundred" |
-| 3. Similarity floor | Drops cars with cosine similarity below **0.25**; waived for name matches and for cars matching every explicit preference | Every ranked search | Removes nearly everything for nonsense such as "asdfgh" |
-| 4. Relative cutoff | Drops cars scoring below **60%** of the top score | Every ranked search | "family car with lots of space": 409 of 500 candidates removed |
+| 2. Name match | If any candidate contains a typed word (a full-text match, or a **whole word** of its make or model, or right after a number, as "hd" in "1500HD"), only those cars are kept | Queries with no preferences that name a car ("Civic", "F-150", "bmw m3") | "Civic": 8 model-years; "red" does not match "Five Hundred" |
+| 3. Similarity floor | Drops cars with cosine similarity below **0.25**; waived for cars that contain a typed word and for cars matching every explicit preference | Every ranked search | Removes nearly everything for nonsense such as "asdfgh" |
+| 4. Relative cutoff | Drops cars scoring below **60%** of the top score | Every ranked search | "family car with lots of space": 409 of 500 candidates removed, leaving 35 model-years |
 
 The fetch cap exists because the app runs on Render's free tier (512 MB, 0.1 CPU): measured in a container with those
 limits, raising it from 500 to 2,000 for filtered queries left peak memory unchanged (about 357 MiB) and added roughly
@@ -218,7 +223,7 @@ pipeline as served.
 rebuilt: after the last re-ingest, "toyota suv" went from 17 to 33 R1 violations. R3 did not change.)
 
 Both held-out violations are from "vehicle for a big family": a 2007 Bentley Azure convertible at rank 50 and a 2000
-Cadillac Eldorado coupe at rank 63 (of 124). "big" maps to Size: Large, which these cars match, so they get partial
+Cadillac Eldorado coupe at rank 63 (of 125). "big" maps to Size: Large, which these cars match, so they get partial
 constraint credit and survive the cutoff. Not fixed, to keep the held-out set honest.
 
 **Category inference on vs off** (main set; flag `carsearch.category-inference`):
@@ -229,28 +234,15 @@ constraint credit and survive the cutoff. Not fixed, to keep the held-out set ho
 | "family car with lots of space" | infers SUV or minivan; top 10 all minivans; 0 violations | P@10 0.50; 57 violations |
 | "something to haul lumber" (not labeled) | infers pickup; top 10 all pickups | top 10: 7 pickups, 2 vans, 1 minivan |
 
-Full per-query tables: [eval/results/](eval/results/).
+Full per-query tables: [eval/results/](eval/results/). Requirement-by-requirement test scenarios, including every
+known failure: [TEST_SCENARIOS.md](TEST_SCENARIOS.md).
 
 ## 9. Known limitations
 
-- **Dataset label errors flow through:** for example, a 2002 Chrysler Concorde sedan is labeled 4WD.
-- **Small embedding model:** limited nuance on vague queries, which is why category inference uses a conservative threshold.
-- **No horsepower, MPG or model-year parsing:** "over 400 hp" or "2015 or newer" fall back to embeddings.
-- **Hand-tuned thresholds:** the cutoff, inference margin and diversity penalties were chosen on the same 20 queries they are measured on (see the comments next to the constants in `WeightedRanking` and `CategoryInferrer`).
-- **Strict filters mean short lists:** "electric SUV under 60k" returns only the Toyota RAV4 EV years.
-- **"under 30" is not a price:** a bare number below 5,000 is ignored as a price (assumption 9), so it becomes
-  search text instead.
-- **Words the data cannot answer still return something:** there is no colour, seat-count or review data, so
-  "red car" or "7 seater" return the nearest cars by meaning rather than saying "no match".
-- **The latest list is cached:** it is read from the database once per app start, so restart the app after
-  re-ingesting.
-- **Nonsense queries can still return cars:** "asdfgh" returns one Ford Aspire, "zzzz" 22 model-years and "xkcd" 33.
-  Their best similarity (0.26–0.39) overlaps real queries such as "exotic" (0.37) or "sporty" (0.34), so no
-  similarity floor separates them: raising the floor to 0.30 would drop 44 "exotic" and 32 "sporty" results and still
-  not stop "zzzz".
-- **The fetch cap still applies to very large filtered sets:** a filtered query ranks at most the 2,000 nearest cars
-  (for example 2,843 sedans pass "sedan"), and an open-ended query ranks the 500 nearest.
-- **Response time on the free tier:** about 1–2 s per search at Render's 0.1 CPU, mostly for embedding the query.
+The biggest ones: the dataset has no colour, seat or review data and ends at 2017 models, so some queries return the
+nearest cars by meaning rather than an exact answer; nonsense queries such as "zzzz" can still return cars; and the
+first search after an idle period can take up to about a minute on the free hosting. All of them, grouped by
+scenario: [LIMITATIONS.md](LIMITATIONS.md).
 
 ## 10. Scaling to production
 
@@ -262,3 +254,13 @@ Full per-query tables: [eval/results/](eval/results/).
 - **Observability:** metrics and tracing for latency per stage, plus alerts on zero-result and low-score queries.
 - **Quality loop:** run the evaluation (including the held-out set) in CI, and use click data to tune weights, eventually with a learned ranking model.
 - **Safety:** rate limiting, input limits (query length and page size are already capped) and monitoring of the free-text field.
+
+## 11. Future work
+
+Designed or discussed, not built:
+
+- **Related results:** when a search returns fewer than 10 results, show a separate "Related results" list of up to
+  10 more cars from the candidates already fetched and scored, still passing the filters and the 0.25 similarity
+  floor (for example other BMWs for "bmw m3").
+- **Real colour data:** "red car" needs colour from real listing data. Generating random colours was rejected because
+  it would be fake data.
