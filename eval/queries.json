@@ -1,0 +1,108 @@
+{
+  "_doc": "Each grade is a list of rules (OR); a rule's fields are AND-ed; a field's values are OR-ed. A group's grade is the grade of its shown (best) trim. 'never' rows count as violations at any rank.",
+  "queries": [
+    {
+      "query": "trucks",
+      "grade2": [{"body": ["pickup"]}],
+      "never": [{"bodyNot": ["pickup"]}]
+    },
+    {
+      "query": "pickup",
+      "grade2": [{"body": ["pickup"]}],
+      "never": [{"bodyNot": ["pickup"]}]
+    },
+    {
+      "query": "suv",
+      "grade2": [{"body": ["suv"]}],
+      "grade1": [{"market": ["Crossover"]}],
+      "never": [{"body": ["sedan", "coupe"]}]
+    },
+    {
+      "query": "electric",
+      "grade2": [{"fuel": ["electric"]}],
+      "grade1": [{"market": ["Hybrid"]}]
+    },
+    {
+      "query": "electric suv under 60k",
+      "grade2": [{"fuel": ["electric"], "body": ["suv"], "maxMsrp": 60000}],
+      "grade1": [{"fuel": ["electric"], "maxMsrp": 60000}, {"body": ["suv"], "maxMsrp": 60000}],
+      "never": [{"minMsrp": 60001}]
+    },
+    {
+      "query": "convertible",
+      "grade2": [{"style": ["Convertible"]}]
+    },
+    {
+      "query": "fast convertible",
+      "grade2": [{"style": ["Convertible"], "market": ["Performance", "High-Performance"]}],
+      "grade1": [{"style": ["Convertible"]}]
+    },
+    {
+      "query": "family car with lots of space",
+      "grade2": [{"body": ["minivan", "wagon"]}, {"body": ["suv"], "size": ["Large", "Midsize"]}],
+      "grade1": [{"body": ["sedan"], "size": ["Midsize"]}],
+      "never": [{"body": ["coupe", "convertible"]}]
+    },
+    {
+      "query": "cheap fuel efficient car",
+      "grade2": [{"maxMsrp": 25000, "minMpg": 30}],
+      "grade1": [{"maxMsrp": 25000}, {"minMpg": 30}]
+    },
+    {
+      "query": "luxury sedan",
+      "grade2": [{"body": ["sedan"], "market": ["Luxury"]}],
+      "grade1": [{"market": ["Luxury"]}],
+      "never": [{"body": ["pickup"]}]
+    },
+    {
+      "query": "manual sports car",
+      "grade2": [{"transmission": ["MANUAL"], "market": ["Performance", "High-Performance"]}],
+      "grade1": [{"market": ["Performance", "High-Performance"]}]
+    },
+    {
+      "query": "off road 4x4",
+      "grade2": [{"drivetrain": ["4wd"], "body": ["suv", "pickup"]}],
+      "grade1": [{"drivetrain": ["awd"], "body": ["suv"]}],
+      "never": [{"body": ["sedan"]}]
+    },
+    {
+      "query": "Civic",
+      "grade2": [{"model": ["Civic"]}],
+      "grade1": [{"make": ["Honda"]}]
+    },
+    {
+      "query": "ford trucks",
+      "grade2": [{"make": ["Ford"], "body": ["pickup"]}],
+      "never": [{"makeNot": ["Ford"]}, {"bodyNot": ["pickup"]}]
+    },
+    {
+      "query": "diesel pickup",
+      "grade2": [{"body": ["pickup"], "fuel": ["diesel"]}, {"body": ["pickup"], "market": ["Diesel"]}],
+      "grade1": [{"body": ["pickup"]}]
+    },
+    {
+      "query": "minivan",
+      "grade2": [{"body": ["minivan"]}]
+    },
+    {
+      "query": "hatchback",
+      "grade2": [{"body": ["hatchback"]}],
+      "grade1": [{"market": ["Hatchback"]}]
+    },
+    {
+      "query": "awd wagon",
+      "grade2": [{"body": ["wagon"], "drivetrain": ["awd"]}],
+      "grade1": [{"body": ["wagon"]}]
+    },
+    {
+      "query": "exotic",
+      "grade2": [{"market": ["Exotic"]}],
+      "grade1": [{"market": ["High-Performance"]}]
+    },
+    {
+      "query": "suv not electric",
+      "grade2": [{"body": ["suv"], "fuelNot": ["electric"]}],
+      "never": [{"fuel": ["electric"]}]
+    }
+  ]
+}

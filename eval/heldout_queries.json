@@ -1,0 +1,52 @@
+{
+  "_doc": "Held-out queries: not in queries.json and never used for tuning. Same rule format as queries.json.",
+  "queries": [
+    {
+      "query": "pickup truck",
+      "grade2": [{"body": ["pickup"]}],
+      "never": [{"bodyNot": ["pickup"]}]
+    },
+    {
+      "query": "toyota suv",
+      "grade2": [{"make": ["Toyota"], "body": ["suv"]}],
+      "grade1": [{"make": ["Toyota"]}],
+      "never": [{"makeNot": ["Toyota"]}, {"bodyNot": ["suv"]}]
+    },
+    {
+      "query": "diesel",
+      "grade2": [{"fuel": ["diesel"]}, {"market": ["Diesel"]}]
+    },
+    {
+      "query": "two door coupe",
+      "grade2": [{"body": ["coupe"]}],
+      "grade1": [{"body": ["convertible"]}],
+      "never": [{"body": ["sedan", "suv", "pickup", "minivan", "wagon", "van"]}]
+    },
+    {
+      "query": "chevrolet pickup",
+      "grade2": [{"make": ["Chevrolet"], "body": ["pickup"]}],
+      "never": [{"makeNot": ["Chevrolet"]}, {"bodyNot": ["pickup"]}]
+    },
+    {
+      "query": "wagon",
+      "grade2": [{"body": ["wagon"]}]
+    },
+    {
+      "query": "hybrid",
+      "grade2": [{"market": ["Hybrid"]}],
+      "grade1": [{"fuel": ["electric"]}]
+    },
+    {
+      "query": "luxury suv",
+      "grade2": [{"body": ["suv"], "market": ["Luxury"]}],
+      "grade1": [{"body": ["suv"]}],
+      "never": [{"body": ["sedan", "coupe", "pickup"]}]
+    },
+    {
+      "query": "vehicle for a big family",
+      "grade2": [{"body": ["minivan", "wagon"]}, {"body": ["suv"], "size": ["Large", "Midsize"]}],
+      "grade1": [{"body": ["sedan"], "size": ["Midsize", "Large"]}],
+      "never": [{"body": ["coupe", "convertible"]}]
+    }
+  ]
+}
